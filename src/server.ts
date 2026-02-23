@@ -2,7 +2,6 @@ import express from "express";
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { ChatMessage, WSClientEvent, WSServerEvent } from "./types";
-import { generateIdentity } from "./identity";
 
 const PORT = Number(process.env.PORT) || 4000;
 const MAX_MESSAGES = 200;
@@ -70,8 +69,10 @@ wss.on("connection", (ws) => {
       const avatar = event.avatar || "🐦";
       const name = (event.name || "").trim().slice(0, MAX_NAME_LENGTH) || "익명";
 
-      // Assign a random badge server-side
-      const badge = generateIdentity().badge;
+      const VALID_VARIANTS = ["local", "visitor"];
+      const badge = event.badge && VALID_VARIANTS.includes(event.badge.variant)
+        ? { label: String(event.badge.label).slice(0, 20), variant: event.badge.variant as "local" | "visitor" }
+        : { label: "📍 여기 있어요", variant: "local" as const };
 
       const message: ChatMessage = {
         id: generateId(),

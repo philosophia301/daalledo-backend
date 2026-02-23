@@ -25,6 +25,10 @@ export type WSClientEvent = {
   content: string;
   avatar: string;
   name: string;
+  badge: {
+    label: string;
+    variant: "local" | "visitor";
+  };
 };
 
 // Server → Client
