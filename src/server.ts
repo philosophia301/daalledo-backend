@@ -1,13 +1,14 @@
 import express from "express";
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { ChatMessage, WSClientEvent, WSServerEvent, UserIdentity } from "./types";
+import { ChatMessage, WSClientEvent, WSServerEvent } from "./types";
 import { generateIdentity } from "./identity";
 
 const PORT = Number(process.env.PORT) || 4000;
 const MAX_MESSAGES = 200;
 const HISTORY_SIZE = 50;
 const MAX_CONTENT_LENGTH = 500;
+const MAX_NAME_LENGTH = 12;
 
 const app = express();
 const server = http.createServer(app);
@@ -17,11 +18,11 @@ const wss = new WebSocketServer({ server });
 const messages: ChatMessage[] = [];
 
 // Track connected clients
-const clients = new Map<WebSocket, UserIdentity>();
+const clients = new Set<WebSocket>();
 
 function broadcast(event: WSServerEvent) {
   const data = JSON.stringify(event);
-  for (const ws of clients.keys()) {
+  for (const ws of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(data);
     }
@@ -41,13 +42,11 @@ app.get("/health", (_req, res) => {
 });
 
 wss.on("connection", (ws) => {
-  const identity = generateIdentity();
-  clients.set(ws, identity);
+  clients.add(ws);
 
-  // Send init event with identity, recent messages, and online count
+  // Send init event with recent messages and online count
   const initEvent: WSServerEvent = {
     type: "init",
-    user: identity,
     messages: messages.slice(-HISTORY_SIZE),
     onlineCount: getOnlineCount(),
   };
@@ -68,14 +67,17 @@ wss.on("connection", (ws) => {
       const content = event.content?.trim();
       if (!content || content.length > MAX_CONTENT_LENGTH) return;
 
-      const user = clients.get(ws);
-      if (!user) return;
+      const avatar = event.avatar || "🐦";
+      const name = (event.name || "").trim().slice(0, MAX_NAME_LENGTH) || "익명";
+
+      // Assign a random badge server-side
+      const badge = generateIdentity().badge;
 
       const message: ChatMessage = {
         id: generateId(),
-        avatar: user.avatar,
-        name: user.name,
-        badge: user.badge,
+        avatar,
+        name,
+        badge,
         content,
         timestamp: Date.now(),
       };

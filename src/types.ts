@@ -23,13 +23,14 @@ export interface UserIdentity {
 export type WSClientEvent = {
   type: "send_message";
   content: string;
+  avatar: string;
+  name: string;
 };
 
 // Server → Client
 export type WSServerEvent =
   | {
       type: "init";
-      user: UserIdentity;
       messages: ChatMessage[];
       onlineCount: number;
     }
